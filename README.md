@@ -201,10 +201,10 @@ vsim -do run.do           # GUI mode with waveforms
 
 ```bash
 cd sim
-python3 ../scripts/golden_model.py        # regenerate speck_test_vectors.txt (optional, already committed)
+python3 ../scripts/golden_model.py      
 iverilog -g2012 -o sim \
     ../src/speck_datapath.sv ../src/speck_controller.sv ../src/speck32_64_top.sv \
-    ../tb/tb_speck32_64.sv
+    ../verif/tb_speck32_64.sv
 vvp sim
 ```
 
