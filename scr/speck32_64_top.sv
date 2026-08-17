@@ -1,18 +1,3 @@
-// =============================================================================
-// speck32_64_top.sv
-//
-// Top-level SPECK32/64 encryption core. Port list is fixed by the project
-// specification. Wires the controller (speck_controller) and datapath
-// (speck_datapath) together:
-//
-//        start ---------------> +------------+   load_en    +-----------+
-//                                | controller | -----------> | datapath  |
-//   last_round <---------------- +------------+   round_en   |           |
-//                                       |                    |           |
-//                                       +--> valid_out        +---------->
-//                                                              ciphertext
-// =============================================================================
-
 module speck32_64_top (
     input  logic        clk,
     input  logic        rst_n,

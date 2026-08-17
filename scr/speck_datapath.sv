@@ -1,43 +1,3 @@
-// =============================================================================
-// speck_datapath.sv
-//
-// SPECK32/64 datapath.
-//
-// Architecture (see project write-up for justification):
-//   Two structurally-identical round-function primitives run in parallel,
-//   one per clock cycle, for 22 cycles:
-//     - Encryption round unit : advances (X_reg, Y_reg) using the current
-//                                round key RK_reg.
-//     - Key schedule unit     : advances (L0/L1/L2_reg, RK_reg) on-the-fly,
-//                                producing RK[i+1] one cycle ahead of when
-//                                it is needed by the encryption unit.
-//
-//   Both primitives are the SAME wiring: ROTR7 -> ADD16 -> XOR -> ROTL2 -> XOR.
-//   They are instantiated twice (rather than time-multiplexed through one
-//   shared ALU) because SPECK32/64's word size (16 bits) makes a second
-//   adder/rotator set essentially free in area, and running both units in
-//   parallel keeps the controller to a single "ROUND" state with one round
-//   completed per clock -- no extra muxing or extra latency is needed to
-//   arbitrate a shared unit between the data round and the key expansion.
-//
-// Registers:
-//   X_reg, Y_reg           - current cipher block words
-//   RK_reg                 - current round key  (= RK[round_cnt])
-//   L0_reg, L1_reg, L2_reg - 3-word sliding window of the key-schedule
-//                            "l" sequence (oldest -> newest)
-//   round_cnt              - 5-bit round index, 0 .. 21
-//
-// Control inputs (driven by speck_controller):
-//   load_en   - synchronously loads all registers from key_in/plaintext
-//               and clears round_cnt
-//   round_en  - synchronously advances all registers by one round and
-//               increments round_cnt
-//
-// Status output:
-//   last_round - combinational flag, high when round_cnt == 21 (the
-//                datapath is about to execute the final round this cycle)
-// =============================================================================
-
 module speck_datapath (
     input  logic        clk,
     input  logic        rst_n,
@@ -55,19 +15,11 @@ module speck_datapath (
     output logic        last_round   // round_cnt == 21
 );
 
-    // -------------------------------------------------------------------
-    // State registers
-    // -------------------------------------------------------------------
     logic [15:0] x_reg, y_reg;
     logic [15:0] rk_reg;
     logic [15:0] l0_reg, l1_reg, l2_reg;
     logic [4:0]  round_cnt;   // 0 .. 21 fits comfortably in 5 bits
 
-    // -------------------------------------------------------------------
-    // Encryption round unit (combinational) -- primitive instance #1
-    //   x_next = ( ROTR(x_reg,7) + y_reg ) XOR rk_reg
-    //   y_next = ROTL(y_reg,2) XOR x_next
-    // -------------------------------------------------------------------
     logic [15:0] rotr_x;      // ROTR7
     logic [15:0] sum_xy;      // ADD16
     logic [15:0] x_next;      // XOR_A
@@ -80,12 +32,6 @@ module speck_datapath (
     assign rotl_y = {y_reg[13:0], y_reg[15:14]};     // fixed-wiring rotate left by 2
     assign y_next = rotl_y ^ x_next;
 
-    // -------------------------------------------------------------------
-    // Key schedule unit (combinational) -- primitive instance #2
-    // structurally identical to the encryption unit above
-    //   l3_next = ( ROTR(l0_reg,7) + rk_reg ) XOR round_cnt
-    //   rk_next = ROTL(rk_reg,2) XOR l3_next
-    // -------------------------------------------------------------------
     logic [15:0] rotr_l;      // ROTR7_k
     logic [15:0] sum_lrk;     // ADD16_k
     logic [15:0] l3_next;     // XOR_C  (this is l[i+3])
@@ -98,14 +44,8 @@ module speck_datapath (
     assign rotl_rk = {rk_reg[13:0], rk_reg[15:14]};  // fixed-wiring rotate left by 2
     assign rk_next = rotl_rk ^ l3_next;
 
-    // -------------------------------------------------------------------
-    // Status
-    // -------------------------------------------------------------------
     assign last_round = (round_cnt == 5'd21);
 
-    // -------------------------------------------------------------------
-    // Sequential update
-    // -------------------------------------------------------------------
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             x_reg     <= '0;
@@ -137,9 +77,6 @@ module speck_datapath (
         // else: hold (e.g. IDLE / DONE states in the controller)
     end
 
-    // -------------------------------------------------------------------
-    // Output
-    // -------------------------------------------------------------------
     assign ciphertext = {x_reg, y_reg};
 
 endmodule

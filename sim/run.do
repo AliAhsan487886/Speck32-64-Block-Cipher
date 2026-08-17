@@ -1,20 +1,3 @@
-# =============================================================================
-# run.do
-#
-# QuestaSim compile + simulate script for the SPECK32/64 project.
-#
-# Usage (from a directory containing this file, the four .sv files, and
-# speck_test_vectors.txt -- regenerate the vectors first with
-# `python3 golden_model.py` if you don't already have them):
-#
-#   Interactive GUI:
-#     vsim -do run.do
-#
-#   Batch / console only (no waveform window, just the PASS/FAIL log):
-#     vsim -c -do run.do
-#
-# =============================================================================
-
 # Fresh work library
 if {[file exists work]} {
     vdel -all -lib work
